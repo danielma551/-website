@@ -1,0 +1,24 @@
+
+{
+  "name": "remittance-tracker",
+  "version": "1.0.0",
+  "description": "个人汇款工作统计系统",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@chakra-ui/react": "^2.8.0",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "chart.js": "^4.4.9",
+    "date-fns": "^2.30.0",
+    "framer-motion": "^10.16.0",
+    "next": "^13.4.19",
+    "react": "^18.2.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^18.2.0"
+  }
+}
