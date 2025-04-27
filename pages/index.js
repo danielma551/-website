@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   Container,
@@ -39,7 +40,9 @@ import {
   Image,
   Flex,
   ChakraProvider,
-  extendTheme
+  extendTheme,
+  InputGroup,
+  InputLeftElement
 } from '@chakra-ui/react';
 import {
   Chart as ChartJS,
@@ -54,6 +57,8 @@ import {
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
 import { CalendarIcon, RepeatIcon, CheckCircleIcon, TimeIcon, WarningIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import Head from 'next/head';
+import Script from 'next/script';
 
 // 注册 ChartJS 组件
 ChartJS.register(
@@ -490,6 +495,174 @@ const CoffeeElements = () => (
   </>
 );
 
+// 倒計時組件
+const CountdownComponent = () => {
+  const [timeLeft, setTimeLeft] = useState({
+    days: '00',
+    hours: '00',
+    minutes: '00',
+    seconds: '00'
+  });
+  const [progress, setProgress] = useState(0);
+  const [isWeekend, setIsWeekend] = useState(false);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0 是周日，6 是周六
+      
+      // 如果是周末，顯示不同的消息
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        setIsWeekend(true);
+        return;
+      }
+      
+      setIsWeekend(false);
+      
+      // 計算本週五下午6點的時間
+      const friday = new Date(now);
+      friday.setDate(now.getDate() + (5 - dayOfWeek));
+      friday.setHours(18, 0, 0, 0);
+      
+      // 計算剩餘時間
+      const diff = friday - now;
+      if (diff <= 0) {
+        setIsWeekend(true);
+        return;
+      }
+      
+      // 計算天、小時、分鐘和秒
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      // 更新顯示
+      setTimeLeft({
+        days: String(days).padStart(2, '0'),
+        hours: String(hours).padStart(2, '0'),
+        minutes: String(minutes).padStart(2, '0'),
+        seconds: String(seconds).padStart(2, '0')
+      });
+      
+      // 計算週進度
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - dayOfWeek + 1);
+      weekStart.setHours(9, 0, 0, 0);
+      
+      const totalWeekTime = friday - weekStart;
+      const elapsed = now - weekStart;
+      const progressPercentage = Math.min(100, Math.max(0, (elapsed / totalWeekTime) * 100));
+      
+      setProgress(progressPercentage);
+    };
+    
+    // 立即更新一次
+    updateCountdown();
+    
+    // 每秒更新一次
+    const interval = setInterval(updateCountdown, 1000);
+    
+    // 清理函數
+    return () => clearInterval(interval);
+  }, []);
+
+  // 如果用戶通過本地存儲選擇隱藏組件，則不顯示
+  const [showCountdown, setShowCountdown] = useState(true);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hideCountdown = localStorage.getItem('hideCountdown') === 'true';
+      setShowCountdown(!hideCountdown);
+    }
+  }, []);
+
+  if (!showCountdown) return null;
+
+  return (
+    <Box
+      position="fixed"
+      bottom="100px"
+      right="20px"
+      width="240px"
+      bg="rgba(255, 255, 255, 0.9)"
+      backdropFilter="blur(5px)"
+      borderRadius="12px"
+      padding="16px"
+      boxShadow="0 4px 20px rgba(0, 0, 0, 0.15)"
+      color="#333"
+      zIndex={2000}
+      transition="all 0.3s ease"
+      _hover={{
+        transform: 'translateY(-5px)',
+        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.2)'
+      }}
+    >
+      <Button
+        position="absolute"
+        top="5px"
+        right="10px"
+        bg="none"
+        border="none"
+        fontSize="18px"
+        p="0"
+        color="#A0AEC0"
+        lineHeight="1"
+        onClick={() => {
+          setShowCountdown(false);
+          localStorage.setItem('hideCountdown', 'true');
+        }}
+      >
+        &times;
+      </Button>
+      
+      <Heading as="h3" size="sm" mb="12px" textAlign="center">
+        {isWeekend ? '周末愉快！' : '距離周末還有'}
+      </Heading>
+      
+      {!isWeekend && (
+        <HStack spacing={1} justify="center" mb="14px">
+          {Object.entries(timeLeft).map(([unit, value], index, arr) => (
+            <React.Fragment key={unit}>
+              <VStack spacing={0} mx={1}>
+                <Text fontSize="20px" fontWeight="700" color="#2D3748">
+                  {value}
+                </Text>
+                <Text fontSize="12px" color="#718096">
+                  {unit === 'days' ? '天' : 
+                   unit === 'hours' ? '小時' : 
+                   unit === 'minutes' ? '分鐘' : '秒'}
+                </Text>
+              </VStack>
+              {index < arr.length - 1 && (
+                <Text fontSize="20px" fontWeight="700" color="#A0AEC0" mt="-4px">
+                  :
+                </Text>
+              )}
+            </React.Fragment>
+          ))}
+        </HStack>
+      )}
+      
+      {!isWeekend && (
+        <Box bg="#E2E8F0" height="8px" borderRadius="4px" mb="10px" overflow="hidden">
+          <Box 
+            height="100%" 
+            width={`${progress}%`} 
+            bgGradient="linear(to-r, #4299E1, #667EEA)"
+            borderRadius="4px"
+            transition="width 0.5s ease"
+          />
+        </Box>
+      )}
+      
+      <Text fontSize="12px" color="#718096" textAlign="center">
+        {isWeekend ? '享受休息時光' : `本週已完成 ${progress.toFixed(1)}%`}
+      </Text>
+    </Box>
+  );
+};
+
 export default function Home() {
   const [monthlySalary, setMonthlySalary] = useState(0);
   const [dailySalary, setDailySalary] = useState(1000);
@@ -509,6 +682,7 @@ export default function Home() {
   const [holidays, setHolidays] = useState([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date()); // 添加选中日期状态
+  
   const toast = useToast();
 
   // 在组件加载时从localStorage读取数据
@@ -610,6 +784,7 @@ export default function Home() {
       return;
     }
 
+    // 使用当前选择的日期
     const newRecord = {
       date: selectedDate.toLocaleDateString(),
       counts: { ...workCounts },
@@ -618,7 +793,21 @@ export default function Home() {
       timestamp: selectedDate.getTime()
     };
 
-    const updatedRecords = [newRecord, ...records];
+    // 检查是否已经存在同一天的记录
+    const existingRecordIndex = records.findIndex(
+      record => new Date(record.date).toDateString() === selectedDate.toDateString()
+    );
+
+    let updatedRecords;
+    if (existingRecordIndex !== -1) {
+      // 更新现有记录
+      updatedRecords = [...records];
+      updatedRecords[existingRecordIndex] = newRecord;
+    } else {
+      // 添加新记录
+      updatedRecords = [newRecord, ...records];
+    }
+
     setRecords(updatedRecords);
     localStorage.setItem('remittanceRecords', JSON.stringify(updatedRecords));
 
@@ -968,6 +1157,13 @@ export default function Home() {
   return (
     <ChakraProvider theme={theme}>
       <AnimationStyles />
+      
+      <Head>
+        <title>工作統計工具</title>
+        <meta name="description" content="跟踪每日工作量和收益統計" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      
       <Box
         minH="100vh"
         p={5}
@@ -989,6 +1185,9 @@ export default function Home() {
         <DustSprites />
         <TotoroFamily />
         <CoffeeElements />
+        
+        {/* 添加倒計時組件 */}
+        <CountdownComponent />
         
         <Box maxW="1200px" mx="auto" position="relative" zIndex={2}>
           {/* 日期导航 */}
@@ -1036,35 +1235,41 @@ export default function Home() {
                 <VStack spacing={6} mt={6}>
                   <HStack w="100%">
                     <Text w="150px" fontSize="lg" color="coffee.700">月薪（元）：</Text>
-                    <Input 
-                      type="number" 
-                      value={monthlySalary} 
-                      onChange={handleMonthlySalaryChange}
-                      placeholder="输入月薪"
-                      size="lg"
-                      leftElement={<CurrencyIcon ml={2} color="coffee.500" />}
-                      bg="white"
-                      borderColor="coffee.200"
-                      _hover={{ borderColor: "coffee.300" }}
-                      _focus={{ borderColor: "coffee.400", boxShadow: "0 0 0 1px #B98157" }}
-                    />
+                    <InputGroup size="lg">
+                      <InputLeftElement>
+                        <CurrencyIcon ml={2} color="coffee.500" />
+                      </InputLeftElement>
+                      <Input 
+                        type="number" 
+                        value={monthlySalary} 
+                        onChange={handleMonthlySalaryChange}
+                        placeholder="输入月薪"
+                        bg="white"
+                        borderColor="coffee.200"
+                        _hover={{ borderColor: "coffee.300" }}
+                        _focus={{ borderColor: "coffee.400", boxShadow: "0 0 0 1px #B98157" }}
+                      />
+                    </InputGroup>
                   </HStack>
 
                   <HStack w="100%">
                     <Text w="150px" fontSize="lg" color="coffee.700">日薪（元）：</Text>
-                    <Input 
-                      type="number" 
-                      value={dailySalary} 
-                      onChange={handleSalaryChange}
-                      placeholder="输入日薪"
-                      size="lg"
-                      isReadOnly={monthlySalary > 0}
-                      leftElement={<CurrencyIcon ml={2} color="coffee.500" />}
-                      bg="white"
-                      borderColor="coffee.200"
-                      _hover={{ borderColor: "coffee.300" }}
-                      _focus={{ borderColor: "coffee.400", boxShadow: "0 0 0 1px #B98157" }}
-                    />
+                    <InputGroup size="lg">
+                      <InputLeftElement>
+                        <CurrencyIcon ml={2} color="coffee.500" />
+                      </InputLeftElement>
+                      <Input 
+                        type="number" 
+                        value={dailySalary} 
+                        onChange={handleSalaryChange}
+                        placeholder="输入日薪"
+                        isReadOnly={monthlySalary > 0}
+                        bg="white"
+                        borderColor="coffee.200"
+                        _hover={{ borderColor: "coffee.300" }}
+                        _focus={{ borderColor: "coffee.400", boxShadow: "0 0 0 1px #B98157" }}
+                      />
+                    </InputGroup>
                     <Badge colorScheme="brown" bg="coffee.100" color="coffee.700" fontSize="sm">
                       {monthlySalary > 0 ? `当月工作日：${calculateWorkingDays()}天` : ''}
                     </Badge>
@@ -1087,18 +1292,21 @@ export default function Home() {
                         <option value="aml">AML处理</option>
                         <option value="collectChgs">Collect Chgs</option>
                       </Select>
-                      <Input 
-                        type="number" 
-                        value={workCounts[workType]} 
-                        onChange={handleCountChange}
-                        placeholder={`输入${workType === 'remittance' ? '汇款' : workType === 'aml' ? 'AML' : 'Collect Chgs'}处理数量`}
-                        size="lg"
-                        leftElement={<StarIcon ml={2} color="yellow.500" />}
-                        bg="white"
-                        borderColor="coffee.200"
-                        _hover={{ borderColor: "coffee.300" }}
-                        _focus={{ borderColor: "coffee.400", boxShadow: "0 0 0 1px #B98157" }}
-                      />
+                      <InputGroup size="lg">
+                        <InputLeftElement>
+                          <StarIcon ml={2} color="yellow.500" />
+                        </InputLeftElement>
+                        <Input 
+                          type="number" 
+                          value={workCounts[workType]} 
+                          onChange={handleCountChange}
+                          placeholder={`输入${workType === 'remittance' ? '汇款' : workType === 'aml' ? 'AML' : 'Collect Chgs'}处理数量`}
+                          bg="white"
+                          borderColor="coffee.200"
+                          _hover={{ borderColor: "coffee.300" }}
+                          _focus={{ borderColor: "coffee.400", boxShadow: "0 0 0 1px #B98157" }}
+                        />
+                      </InputGroup>
                       <HStack spacing={4} fontSize="sm" color="gray.600">
                         <Text>已输入：</Text>
                         <Badge colorScheme="green">汇款 {workCounts.remittance} 笔</Badge>

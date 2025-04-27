@@ -27,3 +27,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# Local scripts and logs
+*.log
+*.sh
+*.command
+*.plist
